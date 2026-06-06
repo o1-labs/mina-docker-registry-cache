@@ -1,0 +1,19 @@
+[package]
+name = "janitor"
+version = "0.1.0"
+edition = "2021"
+description = "Keep-last-N retention + garbage collection sidecar for a registry:2 cache"
+
+[[bin]]
+name = "janitor"
+path = "src/main.rs"
+
+# Zero external dependencies on purpose: faster musl builds, smaller image,
+# nothing to audit. Everything we need is in std.
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

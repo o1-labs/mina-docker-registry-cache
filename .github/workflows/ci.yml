@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Rust unit tests + fmt
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: janitor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: janitor
+      - name: Check formatting
+        run: cargo fmt --check
+      - name: Run unit tests
+        run: cargo test --locked
+
+  integration:
+    name: End-to-end (registry + janitor, push/prune/verify)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest ships Docker + the compose v2 plugin, which is all the
+      # test needs. It spins up the stack, pushes 4 images, prunes to 2, and
+      # asserts the right tags survive and pull/fail correctly.
+      - name: Run integration test
+        run: ./tests/integration.sh

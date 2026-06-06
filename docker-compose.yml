@@ -1,0 +1,41 @@
+services:
+  registry:
+    image: registry:2.8.3
+    restart: unless-stopped
+    ports:
+      - "${REGISTRY_PORT:-5000}:5000"
+    volumes:
+      - regdata:/var/lib/registry
+      - ./config/registry-config.yml:/etc/docker/registry/config.yml:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/v2/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  janitor:
+    build: ./janitor
+    image: mina-docker-registry-cache-janitor:latest
+    restart: unless-stopped
+    depends_on:
+      registry:
+        condition: service_healthy
+    environment:
+      JANITOR_DATA_DIR: /var/lib/registry
+      JANITOR_REGISTRY_CONFIG: /etc/docker/registry/config.yml
+      KEEP_LAST_N: "${KEEP_LAST_N:-10}"
+      JANITOR_INTERVAL_SECS: "${JANITOR_INTERVAL_SECS:-3600}"
+      GC_DELETE_UNTAGGED: "${GC_DELETE_UNTAGGED:-true}"
+      RUN_ONCE: "${RUN_ONCE:-false}"
+      DRY_RUN: "${DRY_RUN:-false}"
+    volumes:
+      # Same storage as the registry: the janitor prunes tags on the shared FS
+      # and runs `registry garbage-collect` against the same config.
+      - regdata:/var/lib/registry
+      - ./config/registry-config.yml:/etc/docker/registry/config.yml:ro
+
+volumes:
+  # Dev/CI default: a Docker-managed named volume.
+  # Production: override this to bind-mount the Hetzner storage box mount point,
+  # e.g. in docker-compose.override.yml — see docker-compose.override.yml.example.
+  regdata:

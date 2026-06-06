@@ -1,0 +1,27 @@
+# Production override: copy to docker-compose.override.yml to point the registry
+# storage at the Hetzner storage box mounted as a local filesystem.
+#
+# Assumes the storage box is already mounted on the host, e.g. via CIFS:
+#   //u4XXXXX.your-storagebox.de/backup  /mnt/storagebox  cifs  credentials=/etc/storagebox.cred,uid=0,gid=0,iocharset=utf8  0 0
+#
+# CIFS supports the atomic rename the filesystem driver relies on. Avoid SSHFS
+# (weaker rename/locking guarantees) for the live registry store.
+
+services:
+  registry:
+    volumes:
+      - type: bind
+        source: /mnt/storagebox/registry
+        target: /var/lib/registry
+      - ./config/registry-config.yml:/etc/docker/registry/config.yml:ro
+
+  janitor:
+    volumes:
+      - type: bind
+        source: /mnt/storagebox/registry
+        target: /var/lib/registry
+      - ./config/registry-config.yml:/etc/docker/registry/config.yml:ro
+
+# Drop the named volume by not referencing it; bind mounts above replace it.
+volumes:
+  regdata:
